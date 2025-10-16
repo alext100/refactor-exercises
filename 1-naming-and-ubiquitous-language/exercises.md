@@ -117,18 +117,20 @@ Scenario: Successful PickupRequest creation within available DeliveryWindow
 Given a customer chooses a DeliveryWindow that is available for their address,
 When the customer submits the PickupRequest,
 Then the system creates the PickupRequest successfully,
-And the system confirms the scheduled pickup time within the chosen DeliveryWindow.
+And the system confirms the scheduled pickup window within the chosen DeliveryWindow.
+
 
 Scenario: Reject PickupRequest outside carrier service area
 
 Given a customer chooses a DeliveryWindow that is outside the carrier's service area,
 When the customer submits the PickupRequest,
 Then the system rejects the request and explains why,
-And the system suggests alternative available windows.
+And the system suggests alternative available pickup windows.
+
 
 Scenario: Notify carrier of scheduled pickup
 
 Given a scheduled PickupRequest,
-When the system confirms the pickup time,
+When the system confirms the pickup time window,
 Then the system sends a notification to the carrier with the pickup details.
 ```
