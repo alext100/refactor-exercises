@@ -74,6 +74,8 @@ src/
 npm run test
 npm run test:coverage
 ```
+
+```
  % Coverage report from v8
 ------------------------|---------|----------|---------|---------|-------------------
 File                    | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
@@ -96,7 +98,9 @@ All files               |   82.71 |    84.21 |    90.9 |   82.71 |
  src/parsers            |     100 |       80 |     100 |     100 |
   jsonParser.ts         |     100 |       80 |     100 |     100 | 14
 ------------------------|---------|----------|---------|---------|-------------------
+```
 
+```
  ✓ src/formatters/csvFormatter.test.ts (4 tests) 5ms
    ✓ Given a CsvFormatter (4)
      ✓ When formatting a non-empty list of devices (3)
@@ -131,5 +135,7 @@ All files               |   82.71 |    84.21 |    90.9 |   82.71 |
        ✓ Then it should parse, format, and output the data in order 4ms
      ✓ When parser throws an error (1)
        ✓ Then the error should propagate 1ms
+```
 ---
+
 
