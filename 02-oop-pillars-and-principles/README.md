@@ -23,7 +23,8 @@ Design highlights:
 ---
 
 ## Architecture
-<img width="1601" height="1121" alt="02 drawio" src="https://github.com/user-attachments/assets/9ecaac83-cb80-41ba-a1d6-a791b4b1d367" />
+<img width="1601" height="1121" alt="02 drawio" src="https://github.com/user-attachments/assets/c64a68c0-b58e-4208-9c97-c5bc327ab2d1" />
+
 
 ### Domain Models
 
@@ -138,6 +139,7 @@ All files               |   82.71 |    84.21 |    90.9 |   82.71 |
        ✓ Then the error should propagate 1ms
 ```
 ---
+
 
 
 
