@@ -1,0 +1,19 @@
+{
+  "name": "05",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "typescript": "5.4.2"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}
