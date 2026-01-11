@@ -1,13 +1,13 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { Camera } from ".";
 import {
-  Camera,
-  InputController,
-  MoveUpCommand,
   MoveDownCommand,
   MoveLeftCommand,
   MoveRightCommand,
+  MoveUpCommand,
   TurnOnCommand,
-} from ".";
+} from "./commands";
+import { InputController } from "./input-controller";
 
 describe("Given InputController and Camera commands", () => {
   let camera: Camera;
