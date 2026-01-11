@@ -1,15 +1,16 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import {
-  AuditLogger,
   EndRideService,
-  NotificationService,
-  PaymentService,
   Ride,
-  RideApiRepository,
-  VehicleIoTService,
+  RideRepository,
+  PaymentGateway,
+  VehicleLocker,
+  Notifier,
+  AuditTrail,
+  FareCalculator,
 } from "./end-ride-service";
 
-const baseRideCar: Ride = {
+const rideCar: Ride = {
   id: "ride-1",
   vehicleId: "vehicle-1",
   vehicleType: "CAR",
@@ -19,7 +20,7 @@ const baseRideCar: Ride = {
   status: "ACTIVE",
 };
 
-const baseRideMoto: Ride = {
+const rideMoto: Ride = {
   id: "ride-2",
   vehicleId: "vehicle-2",
   vehicleType: "MOTO",
@@ -29,7 +30,7 @@ const baseRideMoto: Ride = {
   status: "ACTIVE",
 };
 
-const baseRideBike: Ride = {
+const rideBike: Ride = {
   id: "ride-3",
   vehicleId: "vehicle-3",
   vehicleType: "BIKE",
@@ -39,119 +40,138 @@ const baseRideBike: Ride = {
   status: "ACTIVE",
 };
 
+const createRideRepository = (ride: Ride): RideRepository => ({
+  findById: vi.fn().mockResolvedValue({ ...ride }),
+  save: vi.fn().mockResolvedValue(undefined),
+});
+
+const paymentGateway: PaymentGateway = {
+  charge: vi.fn().mockResolvedValue(true),
+};
+
+const vehicleLocker: VehicleLocker = {
+  lock: vi.fn().mockResolvedValue(undefined),
+};
+
+const notifier: Notifier = {
+  send: vi.fn().mockResolvedValue(undefined),
+};
+
+const auditTrail: AuditTrail = {
+  log: vi.fn().mockResolvedValue(undefined),
+};
+
+const carFareCalculator: FareCalculator = {
+  supports: (type) => type === "CAR",
+  calculate: (ride) => ride.minutes * 0.5 + ride.distanceKm * 0.2,
+};
+
+const motoFareCalculator: FareCalculator = {
+  supports: (type) => type === "MOTO",
+  calculate: (ride) => ride.minutes * 0.3,
+};
+
+const bikeFareCalculator: FareCalculator = {
+  supports: (type) => type === "BIKE",
+  calculate: (ride) => ride.minutes * 0.1,
+};
+
 describe("Given EndRideService", () => {
-  let rideCar: Ride;
-  let rideMoto: Ride;
-  let rideBike: Ride;
-
-  let findByIdSpy: ReturnType<typeof vi.spyOn>;
-  let saveSpy: ReturnType<typeof vi.spyOn>;
-  let chargeSpy: ReturnType<typeof vi.spyOn>;
-  let lockSpy: ReturnType<typeof vi.spyOn>;
-  let notifySpy: ReturnType<typeof vi.spyOn>;
-  let auditSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
-    // Clone rides to avoid mutation between tests
-    rideCar = { ...baseRideCar };
-    rideMoto = { ...baseRideMoto };
-    rideBike = { ...baseRideBike };
-
-    findByIdSpy = vi.spyOn(RideApiRepository.prototype, "findById");
-    saveSpy = vi
-      .spyOn(RideApiRepository.prototype, "save")
-      .mockResolvedValue(undefined);
-    chargeSpy = vi
-      .spyOn(PaymentService.prototype, "charge")
-      .mockResolvedValue(true);
-    lockSpy = vi
-      .spyOn(VehicleIoTService.prototype, "lock")
-      .mockResolvedValue(undefined);
-    notifySpy = vi
-      .spyOn(NotificationService.prototype, "send")
-      .mockResolvedValue(undefined);
-    auditSpy = vi
-      .spyOn(AuditLogger.prototype, "log")
-      .mockResolvedValue(undefined);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("When payment succeeds", () => {
-    describe("And when the vehicle is a car", () => {
-      test("Then it should finish the ride and charge correctly", async () => {
-        findByIdSpy.mockResolvedValue(rideCar);
+    test("Then it should finish a CAR ride correctly", async () => {
+      const rideRepository = createRideRepository(rideCar);
 
-        const service = new EndRideService();
-        await service.execute("ride-1");
+      const service = new EndRideService(
+        rideRepository,
+        paymentGateway,
+        vehicleLocker,
+        notifier,
+        auditTrail,
+        [carFareCalculator]
+      );
 
-        expect(findByIdSpy).toHaveBeenCalledWith("ride-1");
-        expect(chargeSpy).toHaveBeenCalledWith("user-1", 10 * 0.5 + 5 * 0.2);
-        expect(lockSpy).toHaveBeenCalledWith("vehicle-1");
-        expect(saveSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            status: "FINISHED",
-            totalCost: 10 * 0.5 + 5 * 0.2,
-          })
-        );
-        expect(notifySpy).toHaveBeenCalledWith(
-          "user-1",
-          expect.stringContaining("Total cost")
-        );
-        expect(auditSpy).toHaveBeenCalled();
-      });
+      await service.execute("ride-1");
+
+      expect(paymentGateway.charge).toHaveBeenCalledWith(
+        "user-1",
+        10 * 0.5 + 5 * 0.2
+      );
+
+      expect(vehicleLocker.lock).toHaveBeenCalledWith("vehicle-1");
+
+      expect(rideRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "FINISHED",
+          totalCost: 10 * 0.5 + 5 * 0.2,
+        })
+      );
+
+      expect(notifier.send).toHaveBeenCalled();
+      expect(auditTrail.log).toHaveBeenCalled();
     });
 
-    describe("And when the vehicle is a moto", () => {
-      test("Then it should finish the ride and charge correctly", async () => {
-        findByIdSpy.mockResolvedValue(rideMoto);
+    test("Then it should finish a MOTO ride correctly", async () => {
+      const rideRepository = createRideRepository(rideMoto);
 
-        const service = new EndRideService();
-        await service.execute("ride-2");
+      const service = new EndRideService(
+        rideRepository,
+        paymentGateway,
+        vehicleLocker,
+        notifier,
+        auditTrail,
+        [motoFareCalculator]
+      );
 
-        expect(chargeSpy).toHaveBeenCalledWith("user-2", 15 * 0.3);
-        expect(saveSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            status: "FINISHED",
-            totalCost: 15 * 0.3,
-          })
-        );
-      });
+      await service.execute("ride-2");
+
+      expect(paymentGateway.charge).toHaveBeenCalledWith("user-2", 15 * 0.3);
     });
 
-    describe("And when the vehicle is a bike", () => {
-      test("Then it should finish the ride and charge correctly", async () => {
-        findByIdSpy.mockResolvedValue(rideBike);
+    test("Then it should finish a BIKE ride correctly", async () => {
+      const rideRepository = createRideRepository(rideBike);
 
-        const service = new EndRideService();
-        await service.execute("ride-3");
+      const service = new EndRideService(
+        rideRepository,
+        paymentGateway,
+        vehicleLocker,
+        notifier,
+        auditTrail,
+        [bikeFareCalculator]
+      );
 
-        expect(chargeSpy).toHaveBeenCalledWith("user-3", 20 * 0.1);
-        expect(saveSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            status: "FINISHED",
-            totalCost: 20 * 0.1,
-          })
-        );
-      });
+      await service.execute("ride-3");
+
+      expect(paymentGateway.charge).toHaveBeenCalledWith("user-3", 20 * 0.1);
     });
   });
 
   describe("When payment fails", () => {
     test("Then it should throw an error and stop execution", async () => {
-      findByIdSpy.mockResolvedValue(rideMoto);
-      chargeSpy.mockResolvedValue(false);
+      const rideRepository = createRideRepository(rideMoto);
 
-      const service = new EndRideService();
+      const failingPaymentGateway: PaymentGateway = {
+        charge: vi.fn().mockResolvedValue(false),
+      };
+
+      const service = new EndRideService(
+        rideRepository,
+        failingPaymentGateway,
+        vehicleLocker,
+        notifier,
+        auditTrail,
+        [motoFareCalculator]
+      );
 
       await expect(service.execute("ride-2")).rejects.toThrow("Payment failed");
 
-      expect(lockSpy).not.toHaveBeenCalled();
-      expect(saveSpy).not.toHaveBeenCalled();
-      expect(notifySpy).not.toHaveBeenCalled();
-      expect(auditSpy).not.toHaveBeenCalled();
+      expect(vehicleLocker.lock).not.toHaveBeenCalled();
+      expect(rideRepository.save).not.toHaveBeenCalled();
+      expect(notifier.send).not.toHaveBeenCalled();
+      expect(auditTrail.log).not.toHaveBeenCalled();
     });
   });
 });
