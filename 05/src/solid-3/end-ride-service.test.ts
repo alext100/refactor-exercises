@@ -1,14 +1,12 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import {
-  EndRideService,
-  Ride,
-  RideRepository,
-  PaymentGateway,
-  VehicleLocker,
-  Notifier,
-  AuditTrail,
-  FareCalculator,
-} from "./end-ride-service";
+import { EndRideService } from "./end-ride-service";
+import { Ride } from "./types";
+import { RideRepository } from "./ride-repository";
+import { PaymentGateway } from "./payment";
+import { VehicleLocker } from "./vehicle-locker";
+import { Notifier } from "./notifier";
+import { AuditTrail } from "./audit";
+import { FareCalculator } from "./fair-calculator";
 
 const rideCar: Ride = {
   id: "ride-1",
